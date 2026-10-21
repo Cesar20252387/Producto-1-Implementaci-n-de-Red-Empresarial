@@ -1,0 +1,94 @@
+enable
+configure terminal
+hostname R2
+no ip domain-lookup
+service password-encryption
+enable secret cisco123
+username admin privilege 15 secret cisco123
+ip domain-name itla.local
+crypto key generate rsa modulus 1024
+ip ssh version 2
+banner motd #Acceso autorizado - ITLA Grupo 5#
+access-list 10 permit 172.24.10.64 0.0.0.31
+line con 0
+ logging synchronous
+ exec-timeout 0 0
+line vty 0 4
+ login local
+ transport input ssh telnet
+ access-class 10 in
+ exec-timeout 0 0
+exit
+ipv6 unicast-routing
+interface Loopback0
+ ip address 2.2.2.2 255.255.255.255
+ ipv6 address 2001:25:24:ffff::2/128
+ ipv6 ospf 1 area 0
+exit
+interface s1/0
+ description A R1-Core s1/0 (P2P)
+ ip address 172.24.10.162 255.255.255.252
+ ipv6 address 2001:25:24:9::2/64
+ ipv6 ospf 1 area 0
+ no shutdown
+exit
+interface e0/0
+ description TRUNK A SWA13 e0/0
+ no ip address
+ no shutdown
+exit
+interface e0/0.110
+ description VLAN Finanzas
+ encapsulation dot1Q 110
+ ip address 172.24.9.129 255.255.255.128
+ ipv6 address 2001:25:24:3::1/64
+ ipv6 ospf 1 area 0
+ ip access-group FIN_IN in
+exit
+interface e0/0.120
+ description VLAN Academicos
+ encapsulation dot1Q 120
+ ip address 172.24.9.1 255.255.255.128
+ ipv6 address 2001:25:24:2::1/64
+ ipv6 ospf 1 area 0
+ ip access-group ACA_IN in
+exit
+interface e0/0.199
+ description VLAN Blackhull (nativa, sin gateway)
+ encapsulation dot1Q 199 native
+exit
+interface e0/1
+ description A SW e0/0 - LAN Datacenter
+ ip address 172.24.10.1 255.255.255.192
+ ipv6 address 2001:25:24:4::1/64
+ ipv6 ospf 1 area 0
+ no shutdown
+exit
+router ospf 1
+ router-id 2.2.2.2
+ passive-interface default
+ no passive-interface s1/0
+ network 172.24.10.160 0.0.0.3 area 0
+ network 172.24.9.0 0.0.0.127 area 0
+ network 172.24.9.128 0.0.0.127 area 0
+ network 172.24.10.0 0.0.0.63 area 0
+exit
+ipv6 router ospf 1
+ router-id 2.2.2.2
+exit
+
+ip access-list extended FIN_IN
+ deny ip 172.24.9.128 0.0.0.127 172.24.0.0 0.0.7.255
+ deny ip 172.24.9.128 0.0.0.127 172.24.8.0 0.0.0.255
+ deny ip 172.24.9.128 0.0.0.127 172.24.9.0 0.0.0.127
+ permit ip 172.24.9.128 0.0.0.127 any
+exit
+ip access-list extended ACA_IN
+ permit icmp 172.24.9.0 0.0.0.127 172.24.10.64 0.0.0.31 echo-reply
+ permit tcp 172.24.9.0 0.0.0.127 172.24.10.64 0.0.0.31 established
+ deny ip 172.24.9.0 0.0.0.127 172.24.9.128 0.0.0.127
+ deny ip 172.24.9.0 0.0.0.127 172.24.10.64 0.0.0.31
+ permit ip 172.24.9.0 0.0.0.127 any
+exit
+end
+write memory

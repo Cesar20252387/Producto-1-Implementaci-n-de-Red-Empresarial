@@ -1,0 +1,89 @@
+enable
+configure terminal
+hostname R1-Core
+no ip domain-lookup
+service password-encryption
+enable secret cisco123
+username admin privilege 15 secret cisco123
+ip domain-name itla.local
+crypto key generate rsa modulus 1024
+ip ssh version 2
+banner motd #Acceso autorizado - ITLA Grupo 5#
+access-list 10 permit 172.24.10.64 0.0.0.31
+line con 0
+ logging synchronous
+ exec-timeout 0 0
+line vty 0 4
+ login local
+ transport input ssh telnet
+ access-class 10 in
+ exec-timeout 0 0
+exit
+ipv6 unicast-routing
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+ ipv6 address 2001:25:24:ffff::1/128
+ ipv6 ospf 1 area 0
+exit
+interface e0/0
+ description A SWM1 e0/0
+ ip address 172.24.10.169 255.255.255.252
+ ipv6 address 2001:25:24:b::1/64
+ ipv6 ospf 1 area 1
+ no shutdown
+exit
+interface e0/1
+ description A SWM2 e0/0
+ ip address 172.24.10.173 255.255.255.252
+ ipv6 address 2001:25:24:c::1/64
+ ipv6 ospf 1 area 1
+ no shutdown
+exit
+interface e0/2
+ description A ISP e0/0
+ ip address 172.24.10.165 255.255.255.252
+ ipv6 address 2001:25:24:a::1/64
+ ip access-group INTERNET_IN in
+ no shutdown
+exit
+interface s1/0
+ description A R2 s1/0 (P2P)
+ ip address 172.24.10.161 255.255.255.252
+ ipv6 address 2001:25:24:9::1/64
+ ipv6 ospf 1 area 0
+ no shutdown
+exit
+router ospf 1
+ router-id 1.1.1.1
+ area 1 stub
+ passive-interface default
+ no passive-interface e0/0
+ no passive-interface e0/1
+ no passive-interface s1/0
+ network 172.24.10.160 0.0.0.3 area 0
+ network 172.24.10.168 0.0.0.3 area 1
+ network 172.24.10.172 0.0.0.3 area 1
+ default-information originate
+exit
+ipv6 router ospf 1
+ router-id 1.1.1.1
+ area 1 stub
+ default-information originate
+exit
+ip route 0.0.0.0 0.0.0.0 172.24.10.166
+ipv6 route ::/0 2001:25:24:a::2
+ip access-list extended INTERNET_IN
+ permit icmp any any echo-reply
+ permit icmp any any time-exceeded
+ permit icmp any any port-unreachable
+ permit tcp any any established
+ deny ip any any log
+exit
+ interface e0/2
+  ip nat outside
+ interface range e0/0 - 1 , s1/0
+  ip nat inside
+ access-list 20 permit 172.24.0.0 0.1.255.255
+ ip nat inside source list 20 interface e0/2 overload
+end
+write memory

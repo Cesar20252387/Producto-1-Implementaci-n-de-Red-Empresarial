@@ -1,0 +1,18 @@
+enable
+configure terminal
+hostname ISP
+no ip domain-lookup
+ipv6 unicast-routing
+interface Loopback0
+ ip address 8.8.8.8 255.255.255.255
+exit
+interface e0/0
+ description A R1-Core e0/2
+ ip address 172.24.10.166 255.255.255.252
+ ipv6 address 2001:25:24:a::2/64
+ no shutdown
+exit
+ip route 172.24.0.0 255.254.0.0 172.24.10.165
+ipv6 route 2001:25:24::/48 2001:25:24:a::1
+end
+write memory

@@ -1,0 +1,161 @@
+enable
+configure terminal
+hostname SWM2
+no ip domain-lookup
+service password-encryption
+enable secret cisco123
+username admin privilege 15 secret cisco123
+ip domain-name itla.local
+crypto key generate rsa modulus 1024
+ip ssh version 2
+banner motd #Acceso autorizado - ITLA Grupo 5#
+access-list 10 permit 172.24.10.64 0.0.0.31
+line con 0
+ logging synchronous
+ exec-timeout 0 0
+line vty 0 4
+ login local
+ transport input ssh telnet
+ access-class 10 in
+ exec-timeout 0 0
+exit
+ip routing
+ipv6 unicast-routing
+vtp domain ITLA-CORE
+vtp mode client
+vtp version 2
+vtp password itla5
+spanning-tree mode rapid-pvst
+spanning-tree vlan 30,40,99 root primary
+spanning-tree vlan 10,20 root secondary
+interface range e0/1 - 3
+ description EtherChannel entre SWM1 y SWM2
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 99
+ channel-protocol lacp
+ channel-group 1 mode active
+ no shutdown
+exit
+interface Port-channel1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 99
+exit
+interface range e1/0 - 2
+ description Troncales a SWAC1-3
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 99
+ no shutdown
+exit
+interface e0/0
+ description A R1-Core
+ no switchport
+ ip address 172.24.10.174 255.255.255.252
+ ipv6 address 2001:25:24:c::2/64
+ ipv6 ospf 1 area 1
+ no shutdown
+exit
+track 1 interface e0/0 line-protocol
+interface Vlan10
+ ip address 172.24.0.3 255.255.248.0
+ ipv6 address 2001:25:24::3/64
+ ip access-group EST_IN in
+ standby version 2
+ standby 10 ip 172.24.0.1
+ standby 10 priority 100
+ standby 10 preempt
+ standby 10 track 1 decrement 20
+ standby 1010 ipv6 2001:25:24::1/64
+ standby 1010 priority 100
+ standby 1010 preempt
+ standby 1010 track 1 decrement 20
+ ipv6 ospf 1 area 1
+ no shutdown
+exit
+interface Vlan20
+ ip address 172.24.8.3 255.255.255.0
+ ipv6 address 2001:25:24:1::3/64
+ ip access-group DOC_IN in
+ standby version 2
+ standby 20 ip 172.24.8.1
+ standby 20 priority 100
+ standby 20 preempt
+ standby 20 track 1 decrement 20
+ standby 1020 ipv6 2001:25:24:1::1/64
+ standby 1020 priority 100
+ standby 1020 preempt
+ standby 1020 track 1 decrement 20
+ ipv6 ospf 1 area 1
+ no shutdown
+exit
+interface Vlan30
+ ip address 172.24.10.67 255.255.255.224
+ ipv6 address 2001:25:24:5::3/64
+ standby version 2
+ standby 30 ip 172.24.10.65
+ standby 30 priority 110
+ standby 30 preempt
+ standby 30 track 1 decrement 20
+ standby 1030 ipv6 2001:25:24:5::1/64
+ standby 1030 priority 110
+ standby 1030 preempt
+ standby 1030 track 1 decrement 20
+ ipv6 ospf 1 area 1
+ no shutdown
+exit
+interface Vlan40
+ ip address 172.24.10.99 255.255.255.224
+ ipv6 address 2001:25:24:6::3/64
+ standby version 2
+ standby 40 ip 172.24.10.97
+ standby 40 priority 110
+ standby 40 preempt
+ standby 40 track 1 decrement 20
+ standby 1040 ipv6 2001:25:24:6::1/64
+ standby 1040 priority 110
+ standby 1040 preempt
+ standby 1040 track 1 decrement 20
+ ipv6 ospf 1 area 1
+ no shutdown
+exit
+router ospf 1
+ router-id 4.4.4.4
+ area 1 stub
+ passive-interface default
+ no passive-interface e0/0
+ network 172.24.10.172 0.0.0.3 area 1
+ network 172.24.0.0 0.0.7.255 area 1
+ network 172.24.8.0 0.0.0.255 area 1
+ network 172.24.10.64 0.0.0.31 area 1
+ network 172.24.10.96 0.0.0.31 area 1
+exit
+ipv6 router ospf 1
+ router-id 4.4.4.4
+ area 1 stub
+ passive-interface default
+ no passive-interface e0/0
+exit
+ip access-list extended EST_IN
+ permit icmp 172.24.0.0 0.0.7.255 172.24.10.64 0.0.0.31 echo-reply
+ permit tcp 172.24.0.0 0.0.7.255 172.24.10.64 0.0.0.31 established
+ deny ip 172.24.0.0 0.0.7.255 172.24.10.64 0.0.0.31
+ deny ip 172.24.0.0 0.0.7.255 172.24.9.0 0.0.0.255
+ deny ip 172.24.0.0 0.0.7.255 172.24.8.0 0.0.0.255
+ permit ip 172.24.0.0 0.0.7.255 any
+exit
+ip access-list extended DOC_IN
+ permit icmp 172.24.8.0 0.0.0.255 172.24.10.64 0.0.0.31 echo-reply
+ permit tcp 172.24.8.0 0.0.0.255 172.24.10.64 0.0.0.31 established
+ deny ip 172.24.8.0 0.0.0.255 172.24.10.64 0.0.0.31
+ deny ip 172.24.8.0 0.0.0.255 172.24.9.128 0.0.0.127
+ permit ip 172.24.8.0 0.0.0.255 any
+exit
+interface range e1/3, e2/0 - 3, e3/0 - 3
+ switchport mode access
+ switchport access vlan 99
+ shutdown
+exit
+end
+write memory

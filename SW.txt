@@ -1,0 +1,51 @@
+
+enable
+configure terminal
+hostname SW
+no ip domain-lookup
+service password-encryption
+enable secret cisco123
+username admin privilege 15 secret cisco123
+ip domain-name itla.local
+crypto key generate rsa modulus 1024
+ip ssh version 2
+banner motd #Acceso autorizado - ITLA Grupo 5#
+access-list 10 permit 172.24.10.64 0.0.0.31
+line con 0
+ logging synchronous
+ exec-timeout 0 0
+line vty 0 4
+ login local
+ transport input ssh telnet
+ access-class 10 in
+ exec-timeout 0 0
+exit
+vtp domain ITLA-R2
+vtp mode transparent
+vlan 130
+ name DATACENTER
+vlan 199
+ name BLACKHULL
+exit
+spanning-tree mode rapid-pvst
+interface e0/0
+ description A R2 e0/1
+ switchport mode access
+ switchport access vlan 130
+ no shutdown
+exit
+interface e0/1
+ description SERVICIOS
+ switchport mode access
+ switchport access vlan 130
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown
+exit
+interface range e0/2 - 3, e1/0 - 3, e2/0 - 3, e3/0 - 3
+ switchport mode access
+ switchport access vlan 199
+ shutdown
+exit
+end
+write memory
